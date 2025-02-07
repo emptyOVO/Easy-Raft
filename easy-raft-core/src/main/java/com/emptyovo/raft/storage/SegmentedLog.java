@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.emptyovo.raft.storage;
 
 import com.emptyovo.raft.proto.RaftProto;
@@ -78,7 +95,8 @@ public class SegmentedLog {
     public long getLastLogIndex() {
         // two cases in which the segment is empty
         // 1. first initialization, firstLogIndex = 1, lastLogIndex = 0
-        // 2. After the snapshot is completed, the log is cleared. firstLogIndex = snapshotIndex + 1, lastLogIndex = snapshotIndex
+        // 2. After the snapshot is completed, the log is cleared. firstLogIndex = snapshotIndex + 1, lastLogIndex =
+        // snapshotIndex
         if (startLogIndexSegmentMap.size() == 0) {
             return getFirstLogIndex() - 1;
         }
@@ -150,7 +168,7 @@ public class SegmentedLog {
                     startLogIndexSegmentMap.put(newSegment.getStartIndex(), newSegment);
                 }
                 totalSize += entrySize;
-            }  catch (IOException ex) {
+            } catch (IOException ex) {
                 throw new RuntimeException("append raft log exception, msg=" + ex.getMessage());
             }
         }
@@ -293,7 +311,7 @@ public class SegmentedLog {
                 segment.setFileSize(segment.getRandomAccessFile().length());
                 startLogIndexSegmentMap.put(segment.getStartIndex(), segment);
             }
-        } catch(IOException ioException){
+        } catch (IOException ioException) {
             LOG.warn("readSegments exception:", ioException);
             throw new RuntimeException("open segment file error");
         }

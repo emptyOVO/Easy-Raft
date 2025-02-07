@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.emptyovo.raft;
 
 import com.baidu.brpc.client.RpcCallback;
@@ -15,8 +32,21 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -40,7 +70,7 @@ public class RaftNode {
 
     private RaftOptions raftOptions;
     private RaftProto.Configuration configuration;
-    private ConcurrentMap<Integer, Peer> peerMap = new ConcurrentHashMap<>();
+    private Map<Integer, Peer> peerMap = new ConcurrentHashMap<>();
     private RaftProto.Server localServer;
     private StateMachine stateMachine;
     private SegmentedLog raftLog;
@@ -67,9 +97,9 @@ public class RaftNode {
     private ScheduledFuture heartbeatScheduledFuture;
 
     public RaftNode(RaftOptions raftOptions,
-                    List<RaftProto.Server> servers,
-                    RaftProto.Server localServer,
-                    StateMachine stateMachine) {
+            List<RaftProto.Server> servers,
+            RaftProto.Server localServer,
+            StateMachine stateMachine) {
         this.raftOptions = raftOptions;
         RaftProto.Configuration.Builder confBuilder = RaftProto.Configuration.newBuilder();
         for (RaftProto.Server server : servers) {
@@ -100,8 +130,7 @@ public class RaftNode {
         }
         String snapshotDataDir = snapshot.getSnapshotDir() + File.separator + "data";
         stateMachine.readSnapshot(snapshotDataDir);
-        for (long index = snapshot.getMetaData().getLastIncludedIndex() + 1;
-             index <= commitIndex; index++) {
+        for (long index = snapshot.getMetaData().getLastIncludedIndex() + 1; index <= commitIndex; index++) {
             RaftProto.LogEntry entry = raftLog.getEntry(index);
             if (entry.getType() == RaftProto.EntryType.ENTRY_TYPE_DATA) {
                 stateMachine.apply(entry.getData().toByteArray());
@@ -131,6 +160,7 @@ public class RaftNode {
                 new LinkedBlockingQueue<Runnable>());
         scheduledExecutorService = Executors.newScheduledThreadPool(2);
         scheduledExecutorService.scheduleWithFixedDelay(new Runnable() {
+
             @Override
             public void run() {
                 takeSnapshot();
@@ -161,6 +191,7 @@ public class RaftNode {
             for (RaftProto.Server server : configuration.getServersList()) {
                 final Peer peer = peerMap.get(server.getServerId());
                 executorService.submit(new Runnable() {
+
                     @Override
                     public void run() {
                         appendEntries(peer);
@@ -265,7 +296,7 @@ public class RaftNode {
                 return;
             }
             LOG.info("AppendEntries response[{}] from server {} " +
-                            "in term {} (my term is {})",
+                    "in term {} (my term is {})",
                     response.getResCode(), peer.getServer().getServerId(),
                     response.getTerm(), currentTerm);
 
@@ -399,8 +430,7 @@ public class RaftNode {
     // in lock
     public void applyConfiguration(RaftProto.LogEntry entry) {
         try {
-            RaftProto.Configuration newConfiguration
-                    = RaftProto.Configuration.parseFrom(entry.getData().toByteArray());
+            RaftProto.Configuration newConfiguration = RaftProto.Configuration.parseFrom(entry.getData().toByteArray());
             configuration = newConfiguration;
             // update peerMap
             for (RaftProto.Server server : newConfiguration.getServersList()) {
@@ -435,6 +465,7 @@ public class RaftNode {
             electionScheduledFuture.cancel(true);
         }
         electionScheduledFuture = scheduledExecutorService.schedule(new Runnable() {
+
             @Override
             public void run() {
                 startPreVote();
@@ -477,6 +508,7 @@ public class RaftNode {
             }
             final Peer peer = peerMap.get(server.getServerId());
             executorService.submit(new Runnable() {
+
                 @Override
                 public void run() {
                     preVote(peer);
@@ -511,6 +543,7 @@ public class RaftNode {
             }
             final Peer peer = peerMap.get(server.getServerId());
             executorService.submit(new Runnable() {
+
                 @Override
                 public void run() {
                     requestVote(peer);
@@ -566,6 +599,7 @@ public class RaftNode {
     }
 
     private class PreVoteResponseCallback implements RpcCallback<RaftProto.VoteResponse> {
+
         private Peer peer;
         private RaftProto.VoteRequest request;
 
@@ -585,7 +619,7 @@ public class RaftNode {
                 }
                 if (response.getTerm() > currentTerm) {
                     LOG.info("Received pre vote response from server {} " +
-                                    "in term {} (this server's term was {})",
+                            "in term {} (this server's term was {})",
                             peer.getServer().getServerId(),
                             response.getTerm(),
                             currentTerm);
@@ -630,6 +664,7 @@ public class RaftNode {
     }
 
     private class VoteResponseCallback implements RpcCallback<RaftProto.VoteResponse> {
+
         private Peer peer;
         private RaftProto.VoteRequest request;
 
@@ -649,7 +684,7 @@ public class RaftNode {
                 }
                 if (response.getTerm() > currentTerm) {
                     LOG.info("Received RequestVote response from server {} " +
-                                    "in term {} (this server's term was {})",
+                            "in term {} (this server's term was {})",
                             peer.getServer().getServerId(),
                             response.getTerm(),
                             currentTerm);
@@ -714,6 +749,7 @@ public class RaftNode {
             heartbeatScheduledFuture.cancel(true);
         }
         heartbeatScheduledFuture = scheduledExecutorService.schedule(new Runnable() {
+
             @Override
             public void run() {
                 startNewHeartbeat();
@@ -726,6 +762,7 @@ public class RaftNode {
         LOG.debug("start new heartbeat, peers={}", peerMap.keySet());
         for (final Peer peer : peerMap.values()) {
             executorService.submit(new Runnable() {
+
                 @Override
                 public void run() {
                     appendEntries(peer);
@@ -808,8 +845,8 @@ public class RaftNode {
             long lastOffset = 0;
             long lastLength = 0;
             while (!isLastRequest) {
-                RaftProto.InstallSnapshotRequest request
-                        = buildInstallSnapshotRequest(snapshotDataFileMap, lastFileName, lastOffset, lastLength);
+                RaftProto.InstallSnapshotRequest request =
+                        buildInstallSnapshotRequest(snapshotDataFileMap, lastFileName, lastOffset, lastLength);
                 if (request == null) {
                     LOG.warn("snapshot request == null");
                     isSuccess = false;
@@ -821,8 +858,8 @@ public class RaftNode {
                 LOG.info("install snapshot request, fileName={}, offset={}, size={}, isFirst={}, isLast={}",
                         request.getFileName(), request.getOffset(), request.getData().toByteArray().length,
                         request.getIsFirst(), request.getIsLast());
-                RaftProto.InstallSnapshotResponse response
-                        = peer.getRaftConsensusServiceAsync().installSnapshot(request);
+                RaftProto.InstallSnapshotResponse response =
+                        peer.getRaftConsensusServiceAsync().installSnapshot(request);
                 if (response != null && response.getResCode() == RaftProto.ResCode.RES_CODE_SUCCESS) {
                     lastFileName = request.getFileName();
                     lastOffset = request.getOffset();
@@ -881,8 +918,8 @@ public class RaftNode {
                     currentDataSize = (int) (lastFileLength - (lastOffset + lastLength));
                 }
             } else {
-                Map.Entry<String, Snapshot.SnapshotDataFile> currentEntry
-                        = snapshotDataFileMap.higherEntry(lastFileName);
+                Map.Entry<String, Snapshot.SnapshotDataFile> currentEntry =
+                        snapshotDataFileMap.higherEntry(lastFileName);
                 if (currentEntry == null) {
                     LOG.warn("reach the last file={}", lastFileName);
                     return null;
@@ -1000,7 +1037,7 @@ public class RaftNode {
         return state;
     }
 
-    public ConcurrentMap<Integer, Peer> getPeerMap() {
+    public Map<Integer, Peer> getPeerMap() {
         return peerMap;
     }
 

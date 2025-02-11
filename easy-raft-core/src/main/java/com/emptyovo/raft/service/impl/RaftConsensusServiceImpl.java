@@ -39,7 +39,7 @@ public class RaftConsensusServiceImpl implements RaftConsensusService {
     private static final Logger LOG = LoggerFactory.getLogger(RaftConsensusServiceImpl.class);
     private static final JsonFormat PRINTER = new JsonFormat();
 
-    private RaftNode raftNode;
+    private final RaftNode raftNode;
 
     public RaftConsensusServiceImpl(RaftNode node) {
         this.raftNode = node;

@@ -34,7 +34,7 @@ public class RaftClientServiceImpl implements RaftClientService {
     private static final Logger LOG = LoggerFactory.getLogger(RaftClientServiceImpl.class);
     private static final JsonFormat jsonFormat = new JsonFormat();
 
-    private RaftNode raftNode;
+    private final RaftNode raftNode;
 
     public RaftClientServiceImpl(RaftNode raftNode) {
         this.raftNode = raftNode;

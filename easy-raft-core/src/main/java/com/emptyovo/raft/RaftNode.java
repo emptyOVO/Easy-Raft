@@ -25,6 +25,7 @@ import com.emptyovo.raft.util.ConfigurationUtils;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.googlecode.protobuf.format.JsonFormat;
+import lombok.Data;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
@@ -56,6 +57,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * 2. raft node initiates rpc request correlation functions to other rafts
  * 3. raft Node timer: heartbeat timer of the primary node and election timer.
  */
+@Data
 public class RaftNode {
 
     public enum NodeState {
@@ -68,13 +70,13 @@ public class RaftNode {
     private static final Logger LOG = LoggerFactory.getLogger(RaftNode.class);
     private static final JsonFormat jsonFormat = new JsonFormat();
 
-    private RaftOptions raftOptions;
+    private final RaftOptions raftOptions;
     private RaftProto.Configuration configuration;
-    private Map<Integer, Peer> peerMap = new ConcurrentHashMap<>();
-    private RaftProto.Server localServer;
-    private StateMachine stateMachine;
-    private SegmentedLog raftLog;
-    private Snapshot snapshot;
+    private final Map<Integer, Peer> peerMap = new ConcurrentHashMap<>();
+    private final RaftProto.Server localServer;
+    private final StateMachine stateMachine;
+    private final SegmentedLog raftLog;
+    private final Snapshot snapshot;
 
     private NodeState state = NodeState.STATE_FOLLOWER;
     // tenure number last known to the server (initialized to 0, incremented)
@@ -87,9 +89,9 @@ public class RaftNode {
     // index value of the last log entry to be applied to the state machine (initialized to 0, incremented)
     private volatile long lastAppliedIndex;
 
-    private Lock lock = new ReentrantLock();
-    private Condition commitIndexCondition = lock.newCondition();
-    private Condition catchUpCondition = lock.newCondition();
+    private final Lock lock = new ReentrantLock();
+    private final Condition commitIndexCondition = lock.newCondition();
+    private final Condition catchUpCondition = lock.newCondition();
 
     private ExecutorService executorService;
     private ScheduledExecutorService scheduledExecutorService;
@@ -634,7 +636,7 @@ public class RaftNode {
                                 continue;
                             }
                             Peer peer1 = peerMap.get(server.getServerId());
-                            if (peer1.isVoteGranted() != null && peer1.isVoteGranted() == true) {
+                            if (peer1.isVoteGranted() != null && peer1.isVoteGranted()) {
                                 voteGrantedNum += 1;
                             }
                         }
@@ -665,8 +667,8 @@ public class RaftNode {
 
     private class VoteResponseCallback implements RpcCallback<RaftProto.VoteResponse> {
 
-        private Peer peer;
-        private RaftProto.VoteRequest request;
+        private final Peer peer;
+        private final RaftProto.VoteRequest request;
 
         public VoteResponseCallback(Peer peer, RaftProto.VoteRequest request) {
             this.peer = peer;
@@ -939,12 +941,8 @@ public class RaftNode {
             requestBuilder.setFileName(currentFileName);
             requestBuilder.setOffset(currentOffset);
             requestBuilder.setIsFirst(false);
-            if (currentFileName.equals(snapshotDataFileMap.lastKey())
-                    && currentOffset + currentDataSize >= currentDataFile.randomAccessFile.length()) {
-                requestBuilder.setIsLast(true);
-            } else {
-                requestBuilder.setIsLast(false);
-            }
+            requestBuilder.setIsLast(currentFileName.equals(snapshotDataFileMap.lastKey())
+                    && currentOffset + currentDataSize >= currentDataFile.randomAccessFile.length());
             if (currentFileName.equals(snapshotDataFileMap.firstKey()) && currentOffset == 0) {
                 requestBuilder.setIsFirst(true);
                 requestBuilder.setSnapshotMetaData(snapshot.getMetaData());
@@ -967,85 +965,5 @@ public class RaftNode {
         }
 
         return requestBuilder.build();
-    }
-
-    public Lock getLock() {
-        return lock;
-    }
-
-    public long getCurrentTerm() {
-        return currentTerm;
-    }
-
-    public int getVotedFor() {
-        return votedFor;
-    }
-
-    public void setVotedFor(int votedFor) {
-        this.votedFor = votedFor;
-    }
-
-    public long getCommitIndex() {
-        return commitIndex;
-    }
-
-    public void setCommitIndex(long commitIndex) {
-        this.commitIndex = commitIndex;
-    }
-
-    public long getLastAppliedIndex() {
-        return lastAppliedIndex;
-    }
-
-    public void setLastAppliedIndex(long lastAppliedIndex) {
-        this.lastAppliedIndex = lastAppliedIndex;
-    }
-
-    public SegmentedLog getRaftLog() {
-        return raftLog;
-    }
-
-    public int getLeaderId() {
-        return leaderId;
-    }
-
-    public void setLeaderId(int leaderId) {
-        this.leaderId = leaderId;
-    }
-
-    public Snapshot getSnapshot() {
-        return snapshot;
-    }
-
-    public StateMachine getStateMachine() {
-        return stateMachine;
-    }
-
-    public RaftProto.Configuration getConfiguration() {
-        return configuration;
-    }
-
-    public void setConfiguration(RaftProto.Configuration configuration) {
-        this.configuration = configuration;
-    }
-
-    public RaftProto.Server getLocalServer() {
-        return localServer;
-    }
-
-    public NodeState getState() {
-        return state;
-    }
-
-    public Map<Integer, Peer> getPeerMap() {
-        return peerMap;
-    }
-
-    public ExecutorService getExecutorService() {
-        return executorService;
-    }
-
-    public Condition getCatchUpCondition() {
-        return catchUpCondition;
     }
 }

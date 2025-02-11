@@ -19,6 +19,7 @@ package com.emptyovo.raft.storage;
 
 import com.emptyovo.raft.proto.RaftProto;
 import com.emptyovo.raft.util.RaftFileUtils;
+import lombok.Getter;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,23 +36,24 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+@Getter
 public class Snapshot {
 
-    public class SnapshotDataFile {
+    public static class SnapshotDataFile {
 
         public String fileName;
         public RandomAccessFile randomAccessFile;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(Snapshot.class);
-    private String snapshotDir;
+    private final String snapshotDir;
     private RaftProto.SnapshotMetaData metaData;
     // Indicates whether the snapshot is being installed.
     // The leader is installed to the follower. Both the leader and follower are in the installSnapshot state
-    private AtomicBoolean isInstallSnapshot = new AtomicBoolean(false);
+    private final AtomicBoolean isInstallSnapshot = new AtomicBoolean(false);
     // Indicates whether the node itself is taking snapshots of the state machine
-    private AtomicBoolean isTakeSnapshot = new AtomicBoolean(false);
-    private Lock lock = new ReentrantLock();
+    private final AtomicBoolean isTakeSnapshot = new AtomicBoolean(false);
+    private final Lock lock = new ReentrantLock();
 
     public Snapshot(String raftDataDir) {
         this.snapshotDir = raftDataDir + File.separator + "snapshot";
@@ -110,9 +112,8 @@ public class Snapshot {
         String fileName = snapshotDir + File.separator + "metadata";
         File file = new File(fileName);
         try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
-            RaftProto.SnapshotMetaData metadata = RaftFileUtils.readProtoFromFile(
+            return RaftFileUtils.readProtoFromFile(
                     randomAccessFile, RaftProto.SnapshotMetaData.class);
-            return metadata;
         } catch (IOException ex) {
             LOG.warn("meta file not exist, name={}", fileName);
             return null;
@@ -149,23 +150,4 @@ public class Snapshot {
         }
     }
 
-    public RaftProto.SnapshotMetaData getMetaData() {
-        return metaData;
-    }
-
-    public String getSnapshotDir() {
-        return snapshotDir;
-    }
-
-    public AtomicBoolean getIsInstallSnapshot() {
-        return isInstallSnapshot;
-    }
-
-    public AtomicBoolean getIsTakeSnapshot() {
-        return isTakeSnapshot;
-    }
-
-    public Lock getLock() {
-        return lock;
-    }
 }

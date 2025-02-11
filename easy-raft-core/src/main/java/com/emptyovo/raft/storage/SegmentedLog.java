@@ -19,6 +19,7 @@ package com.emptyovo.raft.storage;
 
 import com.emptyovo.raft.proto.RaftProto;
 import com.emptyovo.raft.util.RaftFileUtils;
+import lombok.Getter;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,14 +33,16 @@ import java.util.TreeMap;
 
 public class SegmentedLog {
 
-    private static Logger LOG = LoggerFactory.getLogger(SegmentedLog.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SegmentedLog.class);
 
-    private String logDir;
-    private String logDataDir;
-    private int maxSegmentFileSize;
+    private final String logDir;
+    private final String logDataDir;
+    private final int maxSegmentFileSize;
+    @Getter
     private RaftProto.LogMetaData metaData;
-    private TreeMap<Long, Segment> startLogIndexSegmentMap = new TreeMap<>();
+    private final TreeMap<Long, Segment> startLogIndexSegmentMap = new TreeMap<>();
     // segment log size used to determine whether snapshot needs to be created
+    @Getter
     private volatile long totalSize;
 
     public SegmentedLog(String raftDataDir, int maxSegmentFileSize) {
@@ -57,7 +60,7 @@ public class SegmentedLog {
 
         metaData = this.readMetaData();
         if (metaData == null) {
-            if (startLogIndexSegmentMap.size() > 0) {
+            if (!startLogIndexSegmentMap.isEmpty()) {
                 LOG.error("No readable metadata file but found segments in {}", logDir);
                 throw new RuntimeException("No readable metadata file but found segments");
             }
@@ -73,7 +76,7 @@ public class SegmentedLog {
                     index, firstLogIndex, lastLogIndex);
             return null;
         }
-        if (startLogIndexSegmentMap.size() == 0) {
+        if (startLogIndexSegmentMap.isEmpty()) {
             return null;
         }
         Segment segment = startLogIndexSegmentMap.floorEntry(index).getValue();
@@ -97,7 +100,7 @@ public class SegmentedLog {
         // 1. first initialization, firstLogIndex = 1, lastLogIndex = 0
         // 2. After the snapshot is completed, the log is cleared. firstLogIndex = snapshotIndex + 1, lastLogIndex =
         // snapshotIndex
-        if (startLogIndexSegmentMap.size() == 0) {
+        if (startLogIndexSegmentMap.isEmpty()) {
             return getFirstLogIndex() - 1;
         }
         Segment lastSegment = startLogIndexSegmentMap.lastEntry().getValue();
@@ -200,7 +203,7 @@ public class SegmentedLog {
             }
         }
         long newActualFirstIndex;
-        if (startLogIndexSegmentMap.size() == 0) {
+        if (startLogIndexSegmentMap.isEmpty()) {
             newActualFirstIndex = newFirstIndex;
         } else {
             newActualFirstIndex = startLogIndexSegmentMap.firstKey();
@@ -321,9 +324,8 @@ public class SegmentedLog {
         String fileName = logDir + File.separator + "metadata";
         File file = new File(fileName);
         try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
-            RaftProto.LogMetaData metadata = RaftFileUtils.readProtoFromFile(
+            return RaftFileUtils.readProtoFromFile(
                     randomAccessFile, RaftProto.LogMetaData.class);
-            return metadata;
         } catch (IOException ex) {
             LOG.warn("meta file not exist, name={}", fileName);
             return null;
@@ -362,14 +364,6 @@ public class SegmentedLog {
         } catch (IOException ex) {
             LOG.warn("meta file not exist, name={}", fileName);
         }
-    }
-
-    public RaftProto.LogMetaData getMetaData() {
-        return metaData;
-    }
-
-    public long getTotalSize() {
-        return totalSize;
     }
 
 }

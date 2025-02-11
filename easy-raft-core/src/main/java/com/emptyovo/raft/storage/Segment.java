@@ -18,11 +18,13 @@
 package com.emptyovo.raft.storage;
 
 import com.emptyovo.raft.proto.RaftProto;
+import lombok.Getter;
 
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 public class Segment {
 
     public static class Record {
@@ -54,56 +56,28 @@ public class Segment {
         return entries.get(indexInList).entry;
     }
 
-    public boolean isCanWrite() {
-        return canWrite;
-    }
-
     public void setCanWrite(boolean canWrite) {
         this.canWrite = canWrite;
-    }
-
-    public long getStartIndex() {
-        return startIndex;
     }
 
     public void setStartIndex(long startIndex) {
         this.startIndex = startIndex;
     }
 
-    public long getEndIndex() {
-        return endIndex;
-    }
-
     public void setEndIndex(long endIndex) {
         this.endIndex = endIndex;
-    }
-
-    public long getFileSize() {
-        return fileSize;
     }
 
     public void setFileSize(long fileSize) {
         this.fileSize = fileSize;
     }
 
-    public String getFileName() {
-        return fileName;
-    }
-
     public void setFileName(String fileName) {
         this.fileName = fileName;
     }
 
-    public RandomAccessFile getRandomAccessFile() {
-        return randomAccessFile;
-    }
-
     public void setRandomAccessFile(RandomAccessFile randomAccessFile) {
         this.randomAccessFile = randomAccessFile;
-    }
-
-    public List<Record> getEntries() {
-        return entries;
     }
 
     public void setEntries(List<Record> entries) {

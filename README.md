@@ -27,7 +27,8 @@ Test read operations by executing the following script:
 ## Usage
 The following describes how to use the raft-java dependency library to implement a distributed storage system in the code.
 
-### Configure Dependency (Not yet published to the Maven Central Repository, need to be manually installed locally)
+### Configure Dependency 
+No published to the Maven Central Repository yet, need to be manually installed locally
 ```xml
 <dependency>
     <groupId>com.emptyovo</groupId>
